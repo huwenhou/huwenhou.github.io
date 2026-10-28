@@ -251,6 +251,7 @@
       <li><b>行情看板</b><span class="state live" data-ver="/ESP32-EINK42-BWR-STOCK-OTA/version.txt">已上线</span><small>4.2 寸黑白红墨水屏，六大指数轮播，涨红跌黑。</small><span class="links"><a href="/ESP32-EINK42-BWR-STOCK-OTA/">安装固件</a><a href="https://github.com/huwenhou/ESP32-EINK42-BWR-STOCK-OTA" target="_blank" rel="noopener">源代码</a></span></li>
       <li><b>天气看板</b><span class="state live" data-ver="/ESP32-EINK42-BW-WEATHER-OTA/version.txt">已上线</span><small>4.2 寸黑白墨水屏，上海当前天气与未来 6 天预报。</small><span class="links"><a href="/ESP32-EINK42-BW-WEATHER-OTA/">安装固件</a><a href="https://github.com/huwenhou/ESP32-EINK42-BW-WEATHER-OTA" target="_blank" rel="noopener">源代码</a></span></li>
       <li><b>食谱看板</b><span class="state live" data-ver="/ESP32-EINK42-BW-RECIPE-OTA/version.txt">已上线</span><small>4.2 寸黑白墨水屏，按星期显示午饭、晚饭和运动计划。</small><span class="links"><a href="/ESP32-EINK42-BW-RECIPE-OTA/">安装固件</a><a href="https://github.com/huwenhou/ESP32-EINK42-BW-RECIPE-OTA" target="_blank" rel="noopener">源代码</a></span></li>
+      <li><b>快递跟踪看板</b><span class="state">规划中</span><small>4.2 寸黑白墨水屏，显示在途快递的最新状态和预计送达。</small></li>
       <li><b>4 寸触摸屏</b><span class="state dev">开发中</span><small>ESP32-S3 触摸屏，改造后壳把锂电池藏进机身。</small></li>
     </ul>
   </section>
@@ -260,10 +261,12 @@
       <span class="cat-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></span>
       <h3 id="h-health">健康设备</h3>
     </div>
-    <p class="cat-desc">把听诊、血压和生命体征监测做成能联网的小设备。</p>
+    <p class="cat-desc">把听诊、血压、血氧、血糖和生命体征监测做成能联网的小设备。</p>
     <ul class="items">
       <li><b>蓝牙电子听诊器</b><span class="state design">设计中</span><small>ESP32-S3 + ICS-43434 MEMS 麦克风 + PCM1808 ADC，原理图和 BOM 已完成。</small></li>
       <li><b>血压计</b><span class="state">规划中</span><small>测量结果上传，配合食谱看板的血压打卡。</small></li>
+      <li><b>蓝牙手指血氧仪</b><span class="state">规划中</span><small>夹在手指上测血氧饱和度和脉率，经蓝牙同步到手机。</small></li>
+      <li><b>连续葡萄糖监测仪（CGM）</b><span class="state">规划中</span><small>读取贴片式传感器的血糖数据，在屏幕上显示曲线和趋势。</small></li>
       <li><b>监护仪</b><span class="state">规划中</span><small>多参数生命体征显示与远程查看。</small></li>
     </ul>
     <p class="note-med">个人学习与原型项目，不是医疗器械，不能用于诊断。</p>

@@ -39,7 +39,7 @@
   .board { max-width: 1240px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
   .mod { background: var(--panel); border-radius: 20px; padding: 32px; }
   .span-12 { grid-column: span 12; } .span-7 { grid-column: span 7; } .span-5 { grid-column: span 5; }
-  .span-6 { grid-column: span 6; }
+  .span-6 { grid-column: span 6; } .span-4 { grid-column: span 4; }
 
   .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 28px; min-height: 64px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; }
@@ -151,7 +151,7 @@
   footer a { color: var(--ink-2); }
 
   @media (max-width: 980px) {
-    .span-7, .span-5, .span-6 { grid-column: span 12; }
+    .span-7, .span-5, .span-6, .span-4 { grid-column: span 12; }
     .hero, .stage { min-height: 0; }
     .flow { grid-template-columns: minmax(0, 1fr); }
   }
@@ -177,7 +177,7 @@
   <section class="mod hero span-5" aria-labelledby="h-hero">
     <div>
       <h1 id="h-hero"><span class="nw">做放在桌上、</span><span class="nw">用在身边的</span><span class="nw">物联网设备</span></h1>
-      <p class="lead">我是 Robbie，在上海折腾 ESP32、传感器和各种屏幕：从墨水屏看板、触摸屏，到听诊器、血压计这类健康设备，再到家庭安防和桌面机器人。每台设备都能远程改代码、通过 Wi-Fi 自动升级。</p>
+      <p class="lead">我是 Robbie，在上海折腾 ESP32、传感器和各种屏幕：从墨水屏看板、触摸屏，到听诊器、血压计这类健康设备，再到家庭安防、桌面机器人和掼蛋发牌机。每台设备都能远程改代码、通过 Wi-Fi 自动升级。</p>
     </div>
     <div class="keys">
       <a class="key" href="#projects"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></i>浏览项目</a>
@@ -238,7 +238,7 @@
 
   <div class="sec-head span-12" id="projects">
     <h2>项目</h2>
-    <p>按用途分成四组。已上线的可以直接安装固件，其余的写明当前进度。</p>
+    <p>按用途分成五组。已上线的可以直接安装固件，其余的写明当前进度。</p>
   </div>
 
   <section class="mod cat span-6" aria-labelledby="h-disp">
@@ -269,7 +269,7 @@
     <p class="note-med">个人学习与原型项目，不是医疗器械，不能用于诊断。</p>
   </section>
 
-  <section class="mod cat span-6" aria-labelledby="h-home">
+  <section class="mod cat span-4" aria-labelledby="h-home">
     <div class="cat-top">
       <span class="cat-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><circle cx="12" cy="14" r="3"/></svg></span>
       <h3 id="h-home">家居与安防</h3>
@@ -281,7 +281,7 @@
     </ul>
   </section>
 
-  <section class="mod cat span-6" aria-labelledby="h-robot">
+  <section class="mod cat span-4" aria-labelledby="h-robot">
     <div class="cat-top">
       <span class="cat-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4M9 13h.01M15 13h.01M9 16h6"/></svg></span>
       <h3 id="h-robot">机器人</h3>
@@ -289,6 +289,17 @@
     <p class="cat-desc">会动、会看、会回应的桌面小伙伴。</p>
     <ul class="items">
       <li><b>桌面机器人</b><span class="state">规划中</span><small>表情屏、舵机和语音交互，同样支持远程升级。</small></li>
+    </ul>
+  </section>
+
+  <section class="mod cat span-4" aria-labelledby="h-game">
+    <div class="cat-top">
+      <span class="cat-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="10" height="14" rx="1.5" transform="rotate(-10 8 13)"/><rect x="11" y="4" width="10" height="14" rx="1.5" transform="rotate(8 16 11)"/></svg></span>
+      <h3 id="h-game">桌游</h3>
+    </div>
+    <p class="cat-desc">让牌桌上的重复劳动交给机器。</p>
+    <ul class="items">
+      <li><b>掼蛋发牌机</b><span class="state design">设计中</span><small>ESP32 控制发牌，两副牌 108 张分给四家、每家 27 张；PCB 已在嘉立创 EDA 设计，准备打样。</small></li>
     </ul>
   </section>
 

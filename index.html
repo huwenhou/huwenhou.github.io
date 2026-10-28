@@ -3,89 +3,81 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Robbie 的墨水屏实验室</title>
-<meta name="description" content="用 ESP32 驱动墨水屏，在 iPad 上改代码，固件通过 Wi-Fi 自动更新。行情、天气、食谱三块看板的固件安装与工程笔记。">
+<title>Robbie IoT Lab</title>
+<meta name="description" content="Robbie 的物联网实验室：墨水屏与触摸屏、健康设备、家居安防和桌面机器人。所有设备都能远程改代码、通过 Wi-Fi 自动升级。">
 <style>
   :root {
-    --bg: #E4E7E8;          /* 铝壳冷灰 */
-    --surface: #F2F3F3;
-    --ink: #1A1D1F;
-    --ink-2: #464C50;
-    --ink-3: #697075;
-    --rule: #C9CED1;
-    --mask: #14513F;        /* PCB 阻焊绿 */
-    --mask-ink: #0F3D30;
-    --pad: #C49A3C;         /* 焊盘金 */
-    --eink: #EDEBE6;        /* 墨水屏底色 */
+    --bg: #D9D9D4;
+    --panel: #F4F4F1;
+    --dark: #2A2A28;
+    --dark-2: #3B3B38;
+    --ink: #2A2A28;
+    --ink-2: #55554F;
+    --ink-3: #6B6B64;
+    --rule: #DCDCD6;
+    --key: #F2B705;
+    --key-ink: #2A2A28;
+    --ok: #2F6B3F;
+    --eink: #ECEBE6;
     --eink-ink: #141414;
     --eink-red: #B3201F;
-    --frame: #2B2E30;
-    --display: "Bahnschrift", "DIN Alternate", "DIN Condensed", "Barlow Semi Condensed", "Arial Narrow", "PingFang SC", "Microsoft YaHei", sans-serif;
-    --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", sans-serif;
+    --sans: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    --num: "Helvetica Neue", "DIN Alternate", "Bahnschrift", "Arial", sans-serif;
   }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #15181A; --surface: #1C2023; --ink: #E8ECEE; --ink-2: #B9C0C4; --ink-3: #8D959A;
-      --rule: #2E3438; --mask: #3FA37F; --mask-ink: #8FD6B9; --pad: #D9B25A; --frame: #0C0E0F;
-    }
+    :root:not([data-theme="light"]) { --bg: #141413; --panel: #1F1F1D; --dark: #0E0E0D; --dark-2: #2C2C29; --ink: #ECECE7; --ink-2: #BDBDB5; --ink-3: #96968E; --rule: #33332F; --ok: #6CC488; }
   }
-  :root[data-theme="dark"] {
-    --bg: #15181A; --surface: #1C2023; --ink: #E8ECEE; --ink-2: #B9C0C4; --ink-3: #8D959A;
-    --rule: #2E3438; --mask: #3FA37F; --mask-ink: #8FD6B9; --pad: #D9B25A; --frame: #0C0E0F;
-  }
+  :root[data-theme="dark"] { --bg: #141413; --panel: #1F1F1D; --dark: #0E0E0D; --dark-2: #2C2C29; --ink: #ECECE7; --ink-2: #BDBDB5; --ink-3: #96968E; --rule: #33332F; --ok: #6CC488; }
 
   * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.7; }
-  a { color: var(--mask); text-underline-offset: 3px; }
-  a:hover { color: var(--mask-ink); }
-  :focus-visible { outline: 3px solid var(--pad); outline-offset: 3px; }
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 28px; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.65; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--key); outline-offset: 3px; border-radius: 4px; }
 
-  /* 顶栏 */
-  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 72px; }
-  .sig { display: flex; align-items: center; gap: 12px; font-family: var(--display); font-size: 19px; font-weight: 600; letter-spacing: .3px; text-decoration: none; color: var(--ink); }
-  .sig svg { width: 30px; height: 30px; flex: none; }
-  .top nav { display: flex; gap: 22px; font-size: 15px; }
-  .top nav a { color: var(--ink-2); text-decoration: none; }
-  .top nav a:hover { color: var(--ink); }
+  .board { max-width: 1240px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+  .mod { background: var(--panel); border-radius: 20px; padding: 32px; }
+  .span-12 { grid-column: span 12; } .span-7 { grid-column: span 7; } .span-5 { grid-column: span 5; }
+  .span-6 { grid-column: span 6; }
 
-  /* 首屏 */
-  .hero { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: 64px; align-items: center; padding: 56px 0 88px; }
-  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(34px, 4.8vw, 60px); line-height: 1.12; letter-spacing: -.5px; margin: 0 0 24px; }
+  .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 28px; min-height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; }
+  .led { width: 14px; height: 14px; border-radius: 50%; background: var(--key); flex: none; box-shadow: inset 0 -2px 0 rgba(0,0,0,.18); }
+  .nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 26px; font-size: 15px; }
+  .nav ul a { text-decoration: none; color: var(--ink-2); }
+  .nav ul a:hover { color: var(--ink); }
+
+  .hero { display: flex; flex-direction: column; justify-content: space-between; gap: 40px; min-height: 540px; padding: 44px 40px; }
+  h1 { margin: 0; font-size: clamp(34px, 4.2vw, 52px); line-height: 1.14; font-weight: 700; letter-spacing: -.5px; }
   h1 .nw { display: inline-block; }
-  .intro { font-size: 18px; color: var(--ink-2); max-width: 30em; margin: 0 0 32px; }
-  .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
-  .btn { display: inline-flex; align-items: center; min-height: 48px; padding: 0 22px; font-weight: 700; font-size: 15px; text-decoration: none; border-radius: 3px; }
-  .btn.solid { background: var(--ink); color: var(--bg); }
-  .btn.solid:hover { background: var(--mask); color: #fff; }
-  .btn.line { border: 1.5px solid var(--ink); color: var(--ink); }
-  .btn.line:hover { border-color: var(--mask); color: var(--mask); }
+  .lead { margin: 20px 0 0; font-size: 17px; color: var(--ink-2); max-width: 32em; }
+  .keys { display: flex; flex-wrap: wrap; gap: 28px; align-items: center; }
+  .key { display: inline-flex; align-items: center; gap: 12px; font-weight: 700; text-decoration: none; min-height: 48px; }
+  .key i { width: 60px; height: 60px; border-radius: 50%; background: var(--key); color: var(--key-ink); box-shadow: inset 0 -4px 0 rgba(0,0,0,.16); flex: none; display: grid; place-items: center; transition: transform .08s; }
+  .key i.dark { background: var(--dark); box-shadow: inset 0 -4px 0 rgba(255,255,255,.12); }
+  .key:active i { transform: translateY(2px); }
+  .key svg { width: 22px; height: 22px; }
 
-  /* 墨水屏设备 */
-  .device { background: var(--frame); border-radius: 14px; padding: 4.2% 4.2% 7%; box-shadow: 0 40px 70px -40px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06); position: relative; }
-  .device::after { content: ""; position: absolute; left: 50%; bottom: 2.6%; width: 7%; height: 1.2%; min-height: 4px; transform: translateX(-50%); border-radius: 4px; background: #45494C; }
-  .glass { position: relative; aspect-ratio: 4 / 3; background: var(--eink); overflow: hidden; border-radius: 2px; container-type: inline-size; }
+  .stage { background: var(--dark); border-radius: 20px; padding: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; min-height: 540px; }
+  .device { width: 100%; max-width: 560px; background: var(--dark-2); border-radius: 16px; padding: 16px 16px 28px; }
+  .glass { position: relative; aspect-ratio: 4 / 3; background: var(--eink); overflow: hidden; border-radius: 2px; }
   .scaler { position: absolute; left: 0; top: 0; width: 400px; height: 300px; transform-origin: 0 0; }
   .flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
   .glass.refresh .flash { animation: einkflash .62s steps(1, end); }
-  @keyframes einkflash {
-    0%   { opacity: 1; background: #141414; }
-    30%  { opacity: 1; background: #EDEBE6; }
-    55%  { opacity: 1; background: #141414; }
-    80%  { opacity: 1; background: #EDEBE6; }
-    100% { opacity: 0; }
-  }
+  @keyframes einkflash { 0% { opacity: 1; background: #141414; } 30% { opacity: 1; background: #ECEBE6; } 55% { opacity: 1; background: #141414; } 80% { opacity: 1; background: #ECEBE6; } 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .glass.refresh .flash { animation: none; } }
+  .stage-cap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; font-size: 14px; }
+  .stage-cap button { appearance: none; border: 0; background: transparent; color: #BDBDB5; font: inherit; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; min-height: 40px; border-radius: 20px; cursor: pointer; }
+  .stage-cap button::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #55554F; }
+  .stage-cap button[aria-pressed="true"] { color: #F4F4F1; }
+  .stage-cap button[aria-pressed="true"]::before { background: var(--key); }
+
   .screen { position: absolute; inset: 0; color: var(--eink-ink); font-family: "PingFang SC", "Microsoft YaHei", sans-serif; display: none; }
   .screen.on { display: block; }
-  .switch { display: flex; gap: 6px; margin-top: 16px; justify-content: center; }
-  .switch button { appearance: none; border: 1.5px solid var(--rule); background: transparent; color: var(--ink-2); font: inherit; font-size: 14px; padding: 8px 18px; min-height: 40px; border-radius: 3px; cursor: pointer; }
-  .switch button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); font-weight: 700; }
-
-  /* 屏内画面（400×300 原尺寸排版） */
-  .bar { height: 34px; background: #141414; color: #EDEBE6; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; font-size: 12px; font-weight: 700; }
+  .bar { height: 34px; background: #141414; color: #ECEBE6; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; font-size: 12px; font-weight: 700; }
   .bar b { font-size: 18px; font-weight: 900; }
-  .chip { background: #EDEBE6; color: #141414; padding: 0 4px; margin-left: 6px; }
+  .chip { background: #ECEBE6; color: #141414; padding: 0 4px; margin-left: 6px; }
   .big { font-family: "Bahnschrift", "DIN Alternate", "Arial Narrow", sans-serif; font-weight: 700; }
   .st-num { position: absolute; left: 10px; top: 36px; font-size: 58px; line-height: 56px; color: var(--eink-red); }
   .st-chg { position: absolute; left: 10px; top: 92px; font-size: 22px; color: var(--eink-red); }
@@ -118,244 +110,248 @@
   .rc-box li span::before { content: ""; width: 14px; height: 14px; border: 2px solid #141414; border-radius: 50%; }
   .rc-foot { position: absolute; left: 0; right: 0; top: 258px; border-top: 2px solid #141414; display: flex; justify-content: space-between; padding: 8px 10px 0; font-size: 14px; font-weight: 700; }
 
-  /* 区块 */
-  section { padding: 80px 0; border-top: 1px solid var(--rule); }
-  h2 { font-family: var(--display); font-size: 32px; font-weight: 700; line-height: 1.2; margin: 0 0 12px; letter-spacing: -.2px; }
-  .sub { color: var(--ink-2); margin: 0 0 40px; max-width: 34em; }
+  .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding: 40px 8px 0; }
+  h2 { margin: 0; font-size: 30px; line-height: 1.2; letter-spacing: -.3px; }
+  .sec-head p { margin: 0; color: var(--ink-2); max-width: 34em; }
 
-  /* 设备清单 */
-  .boards { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
-  .boards li { display: grid; grid-template-columns: 200px minmax(0, 1fr) auto; gap: 32px; align-items: center; padding: 28px 0; border-bottom: 1px solid var(--rule); }
-  .boards h3 { font-family: var(--display); font-size: 24px; margin: 0; line-height: 1.2; }
-  .spec { display: block; color: var(--ink-3); font-size: 14px; margin-top: 4px; }
-  .boards p { margin: 0; color: var(--ink-2); max-width: 36em; }
-  .live { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-3); margin-top: 6px; }
-  .live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--rule); }
-  .live.ok::before { background: var(--mask); }
-  .acts { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-  .acts .btn { min-height: 44px; padding: 0 18px; font-size: 14px; }
+  .cat { display: flex; flex-direction: column; gap: 18px; }
+  .cat-top { display: flex; align-items: center; gap: 14px; }
+  .cat-ico { width: 48px; height: 48px; border-radius: 14px; background: var(--dark); color: #F4F4F1; display: grid; place-items: center; flex: none; }
+  .cat-ico svg { width: 24px; height: 24px; }
+  .cat h3 { margin: 0; font-size: 22px; line-height: 1.2; }
+  .cat-desc { margin: 0; color: var(--ink-2); font-size: 15px; }
+  .items { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+  .items li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+  .items li:last-child { border-bottom: 0; }
+  .items b { font-size: 16px; }
+  .items small { grid-column: 1 / -1; color: var(--ink-3); font-size: 14px; line-height: 1.5; }
+  .items .links { grid-column: 1 / -1; display: flex; gap: 18px; font-size: 14px; font-weight: 700; }
+  .items .links a { text-decoration: none; border-bottom: 2px solid var(--key); }
+  .state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; white-space: nowrap; color: var(--ink-2); }
+  .state::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--ink-3); }
+  .state.live { color: var(--ok); }
+  .state.live::before { background: var(--ok); border-color: var(--ok); }
+  .state.dev::before { background: var(--key); border-color: var(--key); }
+  .state.design::before { background: var(--ink-3); }
+  .note-med { font-size: 13px; color: var(--ink-3); margin: 0; }
 
-  /* 更新流程：PCB 走线 */
-  .trace { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: relative; }
-  .trace::before { content: ""; position: absolute; left: 10%; right: 10%; top: 21px; height: 4px; background: var(--mask); border-radius: 2px; }
-  .trace li { position: relative; text-align: center; padding: 0 10px; }
-  .trace .padn { position: relative; z-index: 1; width: 46px; height: 46px; margin: 0 auto 18px; border-radius: 50%; background: var(--pad); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 18px; color: #2A2205; box-shadow: 0 0 0 6px var(--bg), 0 0 0 8px var(--mask); }
-  .trace h3 { font-size: 16px; margin: 0 0 6px; }
-  .trace p { margin: 0; font-size: 14px; color: var(--ink-2); }
+  .flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+  .flow li { display: flex; gap: 14px; align-items: flex-start; }
+  .knob { width: 52px; height: 52px; flex: none; border-radius: 50%; background: var(--dark); color: #F4F4F1; display: grid; place-items: center; font-weight: 700; font-size: 20px; font-family: var(--num); box-shadow: inset 0 -4px 0 rgba(255,255,255,.1); }
+  .flow li:last-child .knob { background: var(--key); color: var(--key-ink); }
+  .flow b { display: block; margin-top: 2px; }
+  .flow div span { font-size: 14px; color: var(--ink-3); }
 
-  /* 工程笔记 */
-  .notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 56px; }
-  .note { padding: 24px 0; border-top: 1px solid var(--rule); }
-  .note h3 { font-size: 18px; margin: 0 0 8px; line-height: 1.4; }
+  .note { display: flex; flex-direction: column; gap: 8px; }
+  .note .tag { font-size: 13px; color: var(--ink-3); }
+  .note h3 { margin: 0; font-size: 18px; line-height: 1.4; }
   .note p { margin: 0; color: var(--ink-2); font-size: 15px; }
-  .note .board { color: var(--mask); font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px; }
 
-  footer { border-top: 1px solid var(--rule); padding: 32px 0 48px; color: var(--ink-3); font-size: 14px; }
-  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+  footer.mod { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 22px 28px; font-size: 14px; color: var(--ink-3); }
+  footer a { color: var(--ink-2); }
 
-  @media (max-width: 920px) {
-    .hero { grid-template-columns: minmax(0, 1fr); gap: 48px; padding: 32px 0 64px; }
-    .boards li { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-    .acts { justify-content: flex-start; }
-    .trace { grid-template-columns: minmax(0, 1fr); gap: 28px; }
-    .trace::before { left: 21px; right: auto; top: 10px; bottom: 10px; width: 4px; height: auto; }
-    .trace li { display: grid; grid-template-columns: 46px 1fr; gap: 0 18px; text-align: left; padding: 0; }
-    .trace .padn { margin: 0; grid-row: span 2; }
-    .notes { grid-template-columns: minmax(0, 1fr); }
-    section { padding: 56px 0; }
+  @media (max-width: 980px) {
+    .span-7, .span-5, .span-6 { grid-column: span 12; }
+    .hero, .stage { min-height: 0; }
+    .flow { grid-template-columns: minmax(0, 1fr); }
   }
-  @media (max-width: 520px) {
-    .wrap { padding: 0 16px; }
-    .top nav { display: none; }
-    .intro { font-size: 16px; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .glass.refresh .flash { animation: none; }
+  @media (max-width: 560px) {
+    .board { padding: 12px; gap: 12px; }
+    .mod { padding: 24px 20px; border-radius: 16px; }
+    .hero { padding: 28px 20px; }
+    .stage { padding: 16px; }
+    .nav { padding: 0 18px; }
+    .nav ul { display: none; }
+    .sec-head { padding: 28px 4px 0; }
   }
 </style>
 </head>
 <body>
+<div class="board">
 
-<header class="wrap top">
-  <a class="sig" href="/">
-    <svg viewBox="0 0 30 30" aria-hidden="true"><rect x="1.5" y="4.5" width="27" height="21" rx="3" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="6" y="9" width="18" height="12" fill="currentColor"/><rect x="17" y="15" width="7" height="6" fill="#B3201F"/></svg>
-    Robbie 的墨水屏实验室
-  </a>
-  <nav aria-label="页面导航">
-    <a href="#boards">设备</a>
-    <a href="#pipeline">更新流程</a>
-    <a href="#notes">工程笔记</a>
-  </nav>
-</header>
+  <header class="mod nav span-12">
+    <a class="brand" href="/"><span class="led" aria-hidden="true"></span>Robbie IoT Lab</a>
+    <nav aria-label="页面导航"><ul><li><a href="#projects">项目</a></li><li><a href="#workflow">工作流</a></li><li><a href="#notes">笔记</a></li><li><a href="https://github.com/huwenhou" target="_blank" rel="noopener">GitHub</a></li></ul></nav>
+  </header>
 
-<main>
-  <div class="wrap hero">
+  <section class="mod hero span-5" aria-labelledby="h-hero">
     <div>
-      <h1><span class="nw">在 iPad 上改代码，</span><span class="nw">桌上的墨水屏</span><span class="nw">自己更新</span></h1>
-      <p class="intro">我用 ESP32 驱动几块 4.2 寸墨水屏，分别显示股市行情、上海天气和每天的食谱。改动在 iPad 上说一句，编译和发布交给云端，设备通过 Wi-Fi 自动升级，不用再插电脑。</p>
-      <div class="hero-actions">
-        <a class="btn solid" href="#boards">安装固件</a>
-        <a class="btn line" href="https://github.com/huwenhou" target="_blank" rel="noopener">GitHub</a>
-      </div>
+      <h1 id="h-hero"><span class="nw">做放在桌上、</span><span class="nw">用在身边的</span><span class="nw">物联网设备</span></h1>
+      <p class="lead">我是 Robbie，在上海折腾 ESP32、传感器和各种屏幕：从墨水屏看板、触摸屏，到听诊器、血压计这类健康设备，再到家庭安防和桌面机器人。每台设备都能远程改代码、通过 Wi-Fi 自动升级。</p>
     </div>
+    <div class="keys">
+      <a class="key" href="#projects"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></i>浏览项目</a>
+      <a class="key" href="https://github.com/huwenhou" target="_blank" rel="noopener"><i class="dark" aria-hidden="true"></i>GitHub</a>
+    </div>
+  </section>
 
-    <figure style="margin:0">
-      <div class="device">
-        <div class="glass" id="glass">
-          <div class="scaler">
-
-            <div class="screen on" id="s-stock" role="img" aria-label="行情看板画面示意：上证指数">
-              <div class="bar"><span><b>上证指数</b>&nbsp; A股 000001</span><span>10月28日 15:00<span class="chip">已收盘</span>&nbsp; 1/6</span></div>
-              <div class="st-num big">3,681.47</div>
-              <div class="st-chg big">▲ +33.17　+0.91%</div>
-              <svg class="st-chart" viewBox="0 0 380 100" aria-hidden="true">
-                <line x1="0" y1="78" x2="380" y2="78" stroke="#141414" stroke-dasharray="3 3"/>
-                <line x1="190" y1="0" x2="190" y2="100" stroke="#141414" stroke-dasharray="1 3"/>
-                <text x="4" y="72" font-size="10" font-weight="700" fill="#141414">昨收 3,648.30</text>
-                <polyline fill="none" stroke="#B3201F" stroke-width="2.5" stroke-linejoin="round" points="0,30 8,52 16,40 26,58 36,44 46,28 56,36 66,50 80,60 96,64 112,58 128,66 140,62 152,70 164,56 176,48 186,30 190,22 196,40 210,34 224,30 238,44 250,54 262,48 274,42 286,56 298,44 312,46 326,36 340,30 352,40 366,38 380,32"/>
-              </svg>
-              <div class="st-axis"><span>9:30</span><span>11:30/13:00</span><span>15:00</span></div>
-              <div class="foot4"><div>今开<span class="big">3,676.92</span></div><div>最高<span class="big r">3,683.92</span></div><div>最低<span class="big">3,652.75</span></div><div>成交额<span class="big">7,510亿</span></div></div>
-            </div>
-
-            <div class="screen" id="s-weather" role="img" aria-label="天气看板画面示意：上海">
-              <div class="bar" style="height:27px"><b style="font-size:16px">上海&nbsp; 10月28日 周三</b><span>更新 21:30</span></div>
-              <div class="wx-left">
-                <svg viewBox="0 0 100 92" aria-hidden="true"><path d="M30 60a18 18 0 0 1 0-36 26 26 0 0 1 48 6 18 18 0 0 1 0 30z" fill="none" stroke="#141414" stroke-width="5" stroke-linejoin="round"/><path d="M38 70l-6 16M56 70l-6 16M74 70l-6 16" stroke="#141414" stroke-width="5" stroke-linecap="round"/></svg>
-                <div class="wx-t big">22<sup>°</sup></div>
-                <div class="wx-d">小雨&nbsp; 17~23°</div>
-                <div class="wx-s">体感 22°&nbsp; 湿度 72%<br>东北风 3级<br>日出 06:02&nbsp; 日落 17:14</div>
-              </div>
-              <ul class="wx-list">
-                <li><b>周四<small>10/29</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><path d="M30 60a18 18 0 0 1 0-36 26 26 0 0 1 48 6 18 18 0 0 1 0 30z" fill="none" stroke="#141414" stroke-width="7"/><path d="M40 70l-6 14M60 70l-6 14" stroke="#141414" stroke-width="7"/></svg><span>阵雨</span><span class="wx-range">18°<i style="--a:30%;--b:35%"></i>22°</span></li>
-                <li><b>周五<small>10/30</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><circle cx="34" cy="30" r="14" fill="none" stroke="#141414" stroke-width="7"/><path d="M34 74a16 16 0 0 1 0-32 22 22 0 0 1 42 6 14 14 0 0 1 0 26z" fill="#EDEBE6" stroke="#141414" stroke-width="7"/></svg><span>多云</span><span class="wx-range">17°<i style="--a:20%;--b:25%"></i>23°</span></li>
-                <li><b>周六<small>10/31</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><path d="M30 64a18 18 0 0 1 0-36 26 26 0 0 1 48 6 18 18 0 0 1 0 30z" fill="none" stroke="#141414" stroke-width="7"/></svg><span>阴</span><span class="wx-range">15°<i style="--a:5%;--b:40%"></i>20°</span></li>
-                <li><b>周日<small>11/1</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><circle cx="50" cy="46" r="20" fill="none" stroke="#141414" stroke-width="7"/></svg><span>晴</span><span class="wx-range">16°<i style="--a:12%;--b:0%"></i>24°</span></li>
-                <li><b>周一<small>11/2</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><path d="M30 60a18 18 0 0 1 0-36 26 26 0 0 1 48 6 18 18 0 0 1 0 30z" fill="none" stroke="#141414" stroke-width="7"/><path d="M40 70l-6 14M60 70l-6 14" stroke="#141414" stroke-width="7"/></svg><span>小雨</span><span class="wx-range">16°<i style="--a:12%;--b:30%"></i>21°</span></li>
-                <li><b>周二<small>11/3</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><circle cx="34" cy="30" r="14" fill="none" stroke="#141414" stroke-width="7"/><path d="M34 74a16 16 0 0 1 0-32 22 22 0 0 1 42 6 14 14 0 0 1 0 26z" fill="#EDEBE6" stroke="#141414" stroke-width="7"/></svg><span>多云</span><span class="wx-range">15°<i style="--a:5%;--b:22%"></i>22°</span></li>
-              </ul>
-            </div>
-
-            <div class="screen" id="s-recipe" role="img" aria-label="食谱看板画面示意：周三">
-              <div class="bar"><span><b>10月28日</b>&nbsp; 周三</span><span>1600千卡&nbsp; 限盐5克</span></div>
-              <div class="rc-box" style="left:8px"><h4>午饭<small>约800千卡</small></h4><ul><li><span>杂粮饭</span>1拳</li><li><span>萝卜炖牛肉</span>1碗</li><li><span>凉拌黄瓜</span>2拳</li><li><span>水煮蛋</span>1个</li></ul></div>
-              <div class="rc-box" style="left:204px"><h4>晚饭<small>约700千卡</small></h4><ul><li><span>荞麦面</span>半碗</li><li><span>清蒸鸡蛋羹</span>1碗</li><li><span>白切鸡去皮</span>半掌</li><li><span>蒜蓉菠菜</span>2拳</li></ul></div>
-              <div class="rc-foot"><span>运动：快走40分钟</span><span>血压 早 ☐ 晚 ☐</span></div>
-            </div>
-
+  <section class="stage span-7" aria-label="正在运行的设备">
+    <div class="device">
+      <div class="glass" id="glass">
+        <div class="scaler">
+          <div class="screen on" id="s-stock" role="img" aria-label="行情看板画面：上证指数">
+            <div class="bar"><span><b>上证指数</b>&nbsp; A股 000001</span><span>10月28日 15:00<span class="chip">已收盘</span>&nbsp; 1/6</span></div>
+            <div class="st-num big">3,681.47</div>
+            <div class="st-chg big">▲ +33.17　+0.91%</div>
+            <svg class="st-chart" viewBox="0 0 380 100" aria-hidden="true">
+              <line x1="0" y1="78" x2="380" y2="78" stroke="#141414" stroke-dasharray="3 3"/>
+              <line x1="190" y1="0" x2="190" y2="100" stroke="#141414" stroke-dasharray="1 3"/>
+              <text x="4" y="72" font-size="10" font-weight="700" fill="#141414">昨收 3,648.30</text>
+              <polyline fill="none" stroke="#B3201F" stroke-width="2.5" stroke-linejoin="round" points="0,30 8,52 16,40 26,58 36,44 46,28 56,36 66,50 80,60 96,64 112,58 128,66 140,62 152,70 164,56 176,48 186,30 190,22 196,40 210,34 224,30 238,44 250,54 262,48 274,42 286,56 298,44 312,46 326,36 340,30 352,40 366,38 380,32"/>
+            </svg>
+            <div class="st-axis"><span>9:30</span><span>11:30/13:00</span><span>15:00</span></div>
+            <div class="foot4"><div>今开<span class="big">3,676.92</span></div><div>最高<span class="big r">3,683.92</span></div><div>最低<span class="big">3,652.75</span></div><div>成交额<span class="big">7,510亿</span></div></div>
           </div>
-          <div class="flash" aria-hidden="true"></div>
+          <div class="screen" id="s-weather" role="img" aria-label="天气看板画面：上海">
+            <div class="bar" style="height:27px"><b style="font-size:16px">上海&nbsp; 10月28日 周三</b><span>更新 21:30</span></div>
+            <div class="wx-left">
+              <svg viewBox="0 0 100 92" aria-hidden="true"><path d="M30 60a18 18 0 0 1 0-36 26 26 0 0 1 48 6 18 18 0 0 1 0 30z" fill="none" stroke="#141414" stroke-width="5" stroke-linejoin="round"/><path d="M38 70l-6 16M56 70l-6 16M74 70l-6 16" stroke="#141414" stroke-width="5" stroke-linecap="round"/></svg>
+              <div class="wx-t big">22<sup>°</sup></div>
+              <div class="wx-d">小雨&nbsp; 17~23°</div>
+              <div class="wx-s">体感 22°&nbsp; 湿度 72%<br>东北风 3级<br>日出 06:02&nbsp; 日落 17:14</div>
+            </div>
+            <ul class="wx-list">
+              <li><b>周四<small>10/29</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><path d="M30 60a18 18 0 0 1 0-36 26 26 0 0 1 48 6 18 18 0 0 1 0 30z" fill="none" stroke="#141414" stroke-width="7"/><path d="M40 70l-6 14M60 70l-6 14" stroke="#141414" stroke-width="7"/></svg><span>阵雨</span><span class="wx-range">18°<i style="--a:30%;--b:35%"></i>22°</span></li>
+              <li><b>周五<small>10/30</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><circle cx="34" cy="30" r="14" fill="none" stroke="#141414" stroke-width="7"/><path d="M34 74a16 16 0 0 1 0-32 22 22 0 0 1 42 6 14 14 0 0 1 0 26z" fill="#ECEBE6" stroke="#141414" stroke-width="7"/></svg><span>多云</span><span class="wx-range">17°<i style="--a:20%;--b:25%"></i>23°</span></li>
+              <li><b>周六<small>10/31</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><path d="M30 64a18 18 0 0 1 0-36 26 26 0 0 1 48 6 18 18 0 0 1 0 30z" fill="none" stroke="#141414" stroke-width="7"/></svg><span>阴</span><span class="wx-range">15°<i style="--a:5%;--b:40%"></i>20°</span></li>
+              <li><b>周日<small>11/1</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><circle cx="50" cy="46" r="20" fill="none" stroke="#141414" stroke-width="7"/></svg><span>晴</span><span class="wx-range">16°<i style="--a:12%;--b:0%"></i>24°</span></li>
+              <li><b>周一<small>11/2</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><path d="M30 60a18 18 0 0 1 0-36 26 26 0 0 1 48 6 18 18 0 0 1 0 30z" fill="none" stroke="#141414" stroke-width="7"/><path d="M40 70l-6 14M60 70l-6 14" stroke="#141414" stroke-width="7"/></svg><span>小雨</span><span class="wx-range">16°<i style="--a:12%;--b:30%"></i>21°</span></li>
+              <li><b>周二<small>11/3</small></b><svg viewBox="0 0 100 92" aria-hidden="true"><circle cx="34" cy="30" r="14" fill="none" stroke="#141414" stroke-width="7"/><path d="M34 74a16 16 0 0 1 0-32 22 22 0 0 1 42 6 14 14 0 0 1 0 26z" fill="#ECEBE6" stroke="#141414" stroke-width="7"/></svg><span>多云</span><span class="wx-range">15°<i style="--a:5%;--b:22%"></i>22°</span></li>
+            </ul>
+          </div>
+          <div class="screen" id="s-recipe" role="img" aria-label="食谱看板画面：周三">
+            <div class="bar"><span><b>10月28日</b>&nbsp; 周三</span><span>1600千卡&nbsp; 限盐5克</span></div>
+            <div class="rc-box" style="left:8px"><h4>午饭<small>约800千卡</small></h4><ul><li><span>杂粮饭</span>1拳</li><li><span>萝卜炖牛肉</span>1碗</li><li><span>凉拌黄瓜</span>2拳</li><li><span>水煮蛋</span>1个</li></ul></div>
+            <div class="rc-box" style="left:204px"><h4>晚饭<small>约700千卡</small></h4><ul><li><span>荞麦面</span>半碗</li><li><span>清蒸鸡蛋羹</span>1碗</li><li><span>白切鸡去皮</span>半掌</li><li><span>蒜蓉菠菜</span>2拳</li></ul></div>
+            <div class="rc-foot"><span>运动：快走40分钟</span><span>血压 早 ☐ 晚 ☐</span></div>
+          </div>
         </div>
+        <div class="flash" aria-hidden="true"></div>
       </div>
-      <div class="switch" role="group" aria-label="切换画面">
-        <button type="button" data-s="s-stock" aria-pressed="true">行情</button>
-        <button type="button" data-s="s-weather" aria-pressed="false">天气</button>
-        <button type="button" data-s="s-recipe" aria-pressed="false">食谱</button>
-      </div>
-    </figure>
+    </div>
+    <div class="stage-cap" role="group" aria-label="切换正在运行的设备画面">
+      <button type="button" data-s="s-stock" aria-pressed="true">行情看板</button>
+      <button type="button" data-s="s-weather" aria-pressed="false">天气看板</button>
+      <button type="button" data-s="s-recipe" aria-pressed="false">食谱看板</button>
+    </div>
+  </section>
+
+  <div class="sec-head span-12" id="projects">
+    <h2>项目</h2>
+    <p>按用途分成四组。已上线的可以直接安装固件，其余的写明当前进度。</p>
   </div>
 
-  <section id="boards">
-    <div class="wrap">
-      <h2>三块看板</h2>
-      <p class="sub">首次在电脑上用 Chrome 或 Edge 打开安装页，USB 连接驱动板装一次固件；之后的更新都通过 Wi-Fi 自动完成。</p>
-      <ul class="boards">
-        <li>
-          <div><h3>行情看板</h3><span class="spec">4.2 寸黑白红 · SSD1619A</span></div>
-          <div>
-            <p>上证、创业板、深证、恒生、纳斯达克、道琼斯六个指数轮播，分时走势、涨红跌黑，交易时段 3 分钟换一页。</p>
-            <span class="live" data-ver="/ESP32-EINK42-BWR-STOCK-OTA/version.txt">读取固件版本…</span>
-          </div>
-          <div class="acts"><a class="btn solid" href="/ESP32-EINK42-BWR-STOCK-OTA/">安装固件</a><a class="btn line" href="https://github.com/huwenhou/ESP32-EINK42-BWR-STOCK-OTA" target="_blank" rel="noopener">源代码</a></div>
-        </li>
-        <li>
-          <div><h3>天气看板</h3><span class="spec">4.2 寸黑白 · SSD1683</span></div>
-          <div>
-            <p>上海的当前天气、体感湿度、风力和日出日落，右侧是未来 6 天预报，每 30 分钟更新。</p>
-            <span class="live" data-ver="/ESP32-EINK42-BW-WEATHER-OTA/version.txt">读取固件版本…</span>
-          </div>
-          <div class="acts"><a class="btn solid" href="/ESP32-EINK42-BW-WEATHER-OTA/">安装固件</a><a class="btn line" href="https://github.com/huwenhou/ESP32-EINK42-BW-WEATHER-OTA" target="_blank" rel="noopener">源代码</a></div>
-        </li>
-        <li>
-          <div><h3>食谱看板</h3><span class="spec">4.2 寸黑白 · SSD1683</span></div>
-          <div>
-            <p>按星期显示当天的午饭、晚饭和运动计划，每道菜配一个线条小图标，零点自动换页。</p>
-            <span class="live" data-ver="/ESP32-EINK42-BW-RECIPE-OTA/version.txt">读取固件版本…</span>
-          </div>
-          <div class="acts"><a class="btn solid" href="/ESP32-EINK42-BW-RECIPE-OTA/">安装固件</a><a class="btn line" href="https://github.com/huwenhou/ESP32-EINK42-BW-RECIPE-OTA" target="_blank" rel="noopener">源代码</a></div>
-        </li>
-      </ul>
+  <section class="mod cat span-6" aria-labelledby="h-disp">
+    <div class="cat-top">
+      <span class="cat-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>
+      <h3 id="h-disp">显示屏</h3>
     </div>
+    <p class="cat-desc">墨水屏看板和触摸屏，摆在桌上就能看行情、天气和每天的安排。</p>
+    <ul class="items">
+      <li><b>行情看板</b><span class="state live" data-ver="/ESP32-EINK42-BWR-STOCK-OTA/version.txt">已上线</span><small>4.2 寸黑白红墨水屏，六大指数轮播，涨红跌黑。</small><span class="links"><a href="/ESP32-EINK42-BWR-STOCK-OTA/">安装固件</a><a href="https://github.com/huwenhou/ESP32-EINK42-BWR-STOCK-OTA" target="_blank" rel="noopener">源代码</a></span></li>
+      <li><b>天气看板</b><span class="state live" data-ver="/ESP32-EINK42-BW-WEATHER-OTA/version.txt">已上线</span><small>4.2 寸黑白墨水屏，上海当前天气与未来 6 天预报。</small><span class="links"><a href="/ESP32-EINK42-BW-WEATHER-OTA/">安装固件</a><a href="https://github.com/huwenhou/ESP32-EINK42-BW-WEATHER-OTA" target="_blank" rel="noopener">源代码</a></span></li>
+      <li><b>食谱看板</b><span class="state live" data-ver="/ESP32-EINK42-BW-RECIPE-OTA/version.txt">已上线</span><small>4.2 寸黑白墨水屏，按星期显示午饭、晚饭和运动计划。</small><span class="links"><a href="/ESP32-EINK42-BW-RECIPE-OTA/">安装固件</a><a href="https://github.com/huwenhou/ESP32-EINK42-BW-RECIPE-OTA" target="_blank" rel="noopener">源代码</a></span></li>
+      <li><b>4 寸触摸屏</b><span class="state dev">开发中</span><small>ESP32-S3 触摸屏，改造后壳把锂电池藏进机身。</small></li>
+    </ul>
   </section>
 
-  <section id="pipeline">
-    <div class="wrap">
-      <h2>从 iPad 到墨水屏</h2>
-      <p class="sub">每块看板都走同一条更新链路，全程不需要打开电脑。</p>
-      <ol class="trace">
-        <li><span class="padn">1</span><div><h3>说出改动</h3><p>在 iPad 上描述要改什么，比如换一个指数、调大字号。</p></div></li>
-        <li><span class="padn">2</span><div><h3>修改代码</h3><p>Claude 修改固件源码并推送到 GitHub 仓库。</p></div></li>
-        <li><span class="padn">3</span><div><h3>云端编译</h3><p>GitHub Actions 安装 ESP32 工具链、生成字体并编译固件。</p></div></li>
-        <li><span class="padn">4</span><div><h3>发布</h3><p>固件、版本号和安装页发布到 io.huwenhou.com。</p></div></li>
-        <li><span class="padn">5</span><div><h3>自动升级</h3><p>设备每 10 分钟检查一次版本号，发现新版本就下载并重启。</p></div></li>
-      </ol>
+  <section class="mod cat span-6" aria-labelledby="h-health">
+    <div class="cat-top">
+      <span class="cat-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></span>
+      <h3 id="h-health">健康设备</h3>
     </div>
+    <p class="cat-desc">把听诊、血压和生命体征监测做成能联网的小设备。</p>
+    <ul class="items">
+      <li><b>蓝牙电子听诊器</b><span class="state design">设计中</span><small>ESP32-S3 + ICS-43434 MEMS 麦克风 + PCM1808 ADC，原理图和 BOM 已完成。</small></li>
+      <li><b>血压计</b><span class="state">规划中</span><small>测量结果上传，配合食谱看板的血压打卡。</small></li>
+      <li><b>监护仪</b><span class="state">规划中</span><small>多参数生命体征显示与远程查看。</small></li>
+    </ul>
+    <p class="note-med">个人学习与原型项目，不是医疗器械，不能用于诊断。</p>
   </section>
 
-  <section id="notes">
-    <div class="wrap">
-      <h2>工程笔记</h2>
-      <p class="sub">做这几块屏时踩过的坑，记下来备查。</p>
-      <div class="notes">
-        <article class="note">
-          <span class="board">行情看板</span>
-          <h3>三色屏红色发白：按温度选波形</h3>
-          <p>HINK-E042A13 用的是 SSD1619A 控制器，借用相近芯片的驱动时黑白正常、红色发粉。改为自己写驱动并写入假定温度，让控制器选用更长的刷新波形，红色深度随温度可调。</p>
-        </article>
-        <article class="note">
-          <span class="board">全部看板</span>
-          <h3>中文字体背后多了一块黑底</h3>
-          <p>U8g2 每次切换字体都会把字体模式重置成不透明，背景色默认是黑色。每次 setFont 之后重新设为透明即可，伪粗体叠印也因此才真正生效。</p>
-        </article>
-        <article class="note">
-          <span class="board">天气看板</span>
-          <h3>开机识别驱动芯片偶尔误判</h3>
-          <p>复位后读取 BUSY 引脚的空闲电平可以区分 UC8176 和 SSD 系列，但个别情况下会读错导致白屏。确认型号后直接在配置里固定驱动更稳妥。</p>
-        </article>
-        <article class="note">
-          <span class="board">全部看板</span>
-          <h3>换自定义域名不断升级</h3>
-          <p>旧地址会 301 跳转，而检查版本的请求默认不跟随跳转。先发布一版跟随跳转的固件，再切换域名，并保留 github.io 作为备用地址。</p>
-        </article>
-      </div>
+  <section class="mod cat span-6" aria-labelledby="h-home">
+    <div class="cat-top">
+      <span class="cat-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><circle cx="12" cy="14" r="3"/></svg></span>
+      <h3 id="h-home">家居与安防</h3>
     </div>
+    <p class="cat-desc">摄像头、存储和网络，自己掌握数据，不依赖付费云服务。</p>
+    <ul class="items">
+      <li><b>摄像头监控</b><span class="state">规划中</span><small>米家摄像头经 go2rtc 转流，录像存到本地 NAS，网页和 App 远程查看。</small></li>
+      <li><b>办公室 NAS</b><span class="state">规划中</span><small>团队文件同步与版本管理，同时承担监控录像和影音存储。</small></li>
+    </ul>
   </section>
-</main>
 
-<footer>
-  <div class="wrap">
-    <span>io.huwenhou.com</span>
+  <section class="mod cat span-6" aria-labelledby="h-robot">
+    <div class="cat-top">
+      <span class="cat-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4M9 13h.01M15 13h.01M9 16h6"/></svg></span>
+      <h3 id="h-robot">机器人</h3>
+    </div>
+    <p class="cat-desc">会动、会看、会回应的桌面小伙伴。</p>
+    <ul class="items">
+      <li><b>桌面机器人</b><span class="state">规划中</span><small>表情屏、舵机和语音交互，同样支持远程升级。</small></li>
+    </ul>
+  </section>
+
+  <div class="sec-head span-12" id="workflow">
+    <h2>工作流</h2>
+    <p>所有设备共用一条远程更新链路，改代码不用接电脑。</p>
+  </div>
+  <section class="mod span-12" aria-label="远程更新步骤">
+    <ol class="flow">
+      <li><span class="knob" aria-hidden="true">1</span><div><b>说出改动</b><span>在 iPad 上描述要改什么</span></div></li>
+      <li><span class="knob" aria-hidden="true">2</span><div><b>修改代码</b><span>Claude 修改固件并推送到 GitHub</span></div></li>
+      <li><span class="knob" aria-hidden="true">3</span><div><b>云端编译</b><span>GitHub Actions 编译固件</span></div></li>
+      <li><span class="knob" aria-hidden="true">4</span><div><b>发布</b><span>固件与安装页发布到 io.huwenhou.com</span></div></li>
+      <li><span class="knob" aria-hidden="true">5</span><div><b>自动升级</b><span>设备 10 分钟内检查并更新</span></div></li>
+    </ol>
+  </section>
+
+  <div class="sec-head span-12" id="notes">
+    <h2>笔记</h2>
+    <p>做设备时踩过的坑，记下来备查。</p>
+  </div>
+  <article class="mod note span-6">
+    <span class="tag">墨水屏 · 驱动</span>
+    <h3>三色屏红色发白：按温度选波形</h3>
+    <p>HINK-E042A13 用的是 SSD1619A 控制器。借用相近芯片的驱动时黑白正常、红色发粉；改为自己写驱动并写入假定温度，让控制器选用更长的刷新波形，红色深度可调。</p>
+  </article>
+  <article class="mod note span-6">
+    <span class="tag">墨水屏 · 字体</span>
+    <h3>中文字体背后多了一块黑底</h3>
+    <p>U8g2 每次切换字体都会把字体模式重置成不透明，背景默认是黑色。每次 setFont 之后重新设为透明，伪粗体叠印也因此才真正生效。</p>
+  </article>
+  <article class="mod note span-6">
+    <span class="tag">ESP32 · 网络</span>
+    <h3>Wi-Fi 时不时掉线</h3>
+    <p>ESP32 默认开启 Wi-Fi 省电，部分路由器会踢掉间歇休眠的设备。关闭省电模式，再加一个断线重连、超时重启的看门狗。</p>
+  </article>
+  <article class="mod note span-6">
+    <span class="tag">OTA · 部署</span>
+    <h3>换自定义域名不中断升级</h3>
+    <p>旧地址会 301 跳转，而检查版本的请求默认不跟随跳转。先发布一版跟随跳转的固件，再切换域名，并保留 github.io 作为备用地址。</p>
+  </article>
+
+  <footer class="mod span-12">
+    <span>Robbie IoT Lab · 上海</span>
     <a href="https://github.com/huwenhou" target="_blank" rel="noopener">github.com/huwenhou</a>
-  </div>
-</footer>
+  </footer>
+</div>
 
 <script>
 (function () {
   var glass = document.getElementById('glass');
-  var buttons = Array.prototype.slice.call(document.querySelectorAll('.switch button'));
-  var order = buttons.map(function (b) { return b.dataset.s; });
-  var current = 0, timer = null;
   var scaler = glass.querySelector('.scaler');
   function fit() { scaler.style.transform = 'scale(' + (glass.clientWidth / 400) + ')'; }
   fit();
   if (window.ResizeObserver) new ResizeObserver(fit).observe(glass); else window.addEventListener('resize', fit);
-  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('.stage-cap button'));
+  var order = buttons.map(function (b) { return b.dataset.s; });
+  var current = 0, timer = null;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function show(i) {
     current = (i + order.length) % order.length;
-    if (!reduce) {
-      glass.classList.remove('refresh'); void glass.offsetWidth; glass.classList.add('refresh');
-    }
+    if (!reduce) { glass.classList.remove('refresh'); void glass.offsetWidth; glass.classList.add('refresh'); }
     setTimeout(function () {
       order.forEach(function (id, k) { document.getElementById(id).classList.toggle('on', k === current); });
     }, reduce ? 0 : 300);
@@ -363,21 +359,16 @@
   }
   function start() { if (!reduce && !timer) timer = setInterval(function () { show(current + 1); }, 7000); }
   function stop() { clearInterval(timer); timer = null; }
-
   buttons.forEach(function (b, k) { b.addEventListener('click', function () { stop(); show(k); }); });
   glass.addEventListener('mouseenter', stop);
   glass.addEventListener('mouseleave', start);
   start();
 
-  document.querySelectorAll('.live').forEach(function (el) {
+  document.querySelectorAll('.state[data-ver]').forEach(function (el) {
     fetch(el.dataset.ver, { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.text() : ''; })
-      .then(function (v) {
-        v = (v || '').trim();
-        if (v) { el.textContent = '当前固件 v' + v; el.classList.add('ok'); }
-        else el.textContent = '暂时读不到版本号';
-      })
-      .catch(function () { el.textContent = '暂时读不到版本号'; });
+      .then(function (v) { v = (v || '').trim(); if (v) el.textContent = '已上线 · v' + v; })
+      .catch(function () {});
   });
 })();
 </script>
